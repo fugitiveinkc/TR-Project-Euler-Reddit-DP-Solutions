@@ -16,18 +16,49 @@ Procedure:
 
 '''
 
-import itertools
+import itertools, sys
 
 if __name__ == "__main__":
+
+	#Read in encrypted message
 	encrypted_message = [int(x) for x in open('p059_cipher.txt').read().strip('\n').split(',')]
 	common_words = [x for x in open('common.txt').read().strip('\n').split(',')]
+
+	'''
+	Error checkpoint 1:
+	
+	print encrypted_message
+	print common_words	
+	sys.exit()
+	'''
+
+	#Generate testing keys and loop through XOR
+	count = 0
 	for a,b,c in itertools.product(range(97,123), range(97,123), range(97,123)):
 		temp_message = []
 		current_key = [a,b,c]
 		rotating_index = 0
 		for x in encrypted_message:
-			temp_message.append(chr(x ^ current_key[(rotating_index+1) % 3]))
+			rotating_index = rotating_index % 3
+			temp_message.append(chr(x ^ current_key[rotating_index]))
+			rotating_index += 1
 		temp_message_str = ''.join(temp_message)
-		print temp_message_str
-		break
 		
+		'''
+		Error checkpoint 2:
+
+		print count
+		print current_key
+		print temp_message_str
+		if count == 2:
+			sys.exit()
+		'''
+		#Check if a valid message
+		validity = 0
+		for word in common_words:
+			if word in temp_message_str:
+				validity += 1
+		if validity >= 10:
+			print temp_message_str
+			print sum([ord(character) for character in temp_message_str])
+			sys.exit()		
