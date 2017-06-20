@@ -90,6 +90,55 @@ assert (score("to.be") == 2), "'.' is a separator"
 assert (score("to be, or not to be") == 4), "'to be or not to be' scores 4"
 
 
+def score_distribution(text):
+    """
+    Return the sum of square errors between the distribution of letters in the
+    string compared to the distribution of letters in english.
+    """
+    # calculate distribution
+    counts = dict((letter, 0) for letter in lowercase)
+    total_count = 0
+    for char in text:
+        if char in counts:
+            counts[char] += 1
+            total_count += 1
+
+    # Sum squared errors
+    error = 0
+    for letter in lowercase:
+        freq = float(counts[letter]) / total_counts
+        error += (freq - LETTER_FREQUENCIES[letter])**2
+
+    return error
+
+
+def find_keys_by_freq(text):
+    """
+    For each single letter key, try deciphering the text, and find the error
+    between the resulting potential plaintext's letter frequencies and english.
+    Return a list of (key, plaintext) pairs, sorted by error, ascending.
+    """
+    plaintexts = [(key, decipher(text, key)) for key in letters]
+    plaintexts.sort(key=(lambda pair: score_distribution(pair[1])))
+    return plaintexts
+
+
+def split_string(text, n):
+    """
+    Split a string into n groups on a rotating basis. For example,
+    split_string("lkjsdf", 3) will generate groups of every third character,
+    and return ["ls", "kd", "jf"]. If the string is a ciphertext with a key of
+    length 3, this returns the characters that each character of the key would
+    apply to.
+    """
+    groups = [list() for _ in range(n)]
+    key_index = 0
+    for char in text:
+        groups[n].append(char)
+        n = (n + 1) % key_length
+    return groups
+
+
 # BRUTE FORCE brute force
 def break_cipher(ciphertext, key_length):
     """
