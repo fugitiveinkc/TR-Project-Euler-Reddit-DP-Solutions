@@ -1,6 +1,6 @@
 import re
 from string import ascii_lowercase as lowercase
-from itertools import product, cycle
+from itertools import product, cycle, chain, zip_longest
 
 # regular expression to find lowercase words
 WORDS_RE = re.compile("[a-z]+")
@@ -54,6 +54,8 @@ EXPECTED_PLAINTEXT = (
     "faithfulness. And we have seen his glory, the glory of the only Son of "
     "the Father.")
 
+EXPECTED_ASCII_SUM = 107359
+
 
 def decipher(ciphertext, key):
     """Decipher a ciphertext by xoring it with a repeating key"""
@@ -106,7 +108,7 @@ def score_distribution(text):
     # Sum squared errors
     error = 0
     for letter in lowercase:
-        freq = float(counts[letter]) / total_counts
+        freq = float(counts[letter]) / total_count
         error += (freq - LETTER_FREQUENCIES[letter])**2
 
     return error
@@ -118,29 +120,109 @@ def find_keys_by_freq(text):
     between the resulting potential plaintext's letter frequencies and english.
     Return a list of (key, plaintext) pairs, sorted by error, ascending.
     """
-    plaintexts = [(key, decipher(text, key)) for key in letters]
+    plaintexts = [(key, decipher(text, key)) for key in lowercase]
+    # sort by error from english letter frequencies
     plaintexts.sort(key=(lambda pair: score_distribution(pair[1])))
     return plaintexts
 
 
-def split_string(text, n):
+def split_string(text, key_length):
     """
-    Split a string into n groups on a rotating basis. For example,
+    Split a string into key_length groups on a rotating basis. For example,
     split_string("lkjsdf", 3) will generate groups of every third character,
     and return ["ls", "kd", "jf"]. If the string is a ciphertext with a key of
     length 3, this returns the characters that each character of the key would
     apply to.
     """
-    groups = [list() for _ in range(n)]
-    key_index = 0
+    groups = ["" for _ in range(key_length)]
+    n = 0
     for char in text:
-        groups[n].append(char)
+        groups[n] += char
         n = (n + 1) % key_length
     return groups
 
 
-# BRUTE FORCE brute force
+def test_split_string():
+    assert (split_string("lkjsdf", 1) == ["lkjsdf"]), "one group = one group"
+    assert (split_string("lkjsdf", 2) == ["ljd", "ksf"]), "two groups"
+    assert (split_string("lkjsdf", 3) == ["ls", "kd", "jf"]), "three groups"
+
+# test_split_string()  # passing
+
+
+def combine_strings(texts):
+    """
+    Re-combine strings on a rotating basis (opposite of split_strings). Do it
+    in a disgustingly "functional" and esoteric way:
+    """
+    # get list [[first letters], [second letters]...]
+    # zip would stop as soon as one of the texts ran out of letters, but
+    # zip_longest keeps going, using None as a placeholder.
+    nth_characters = zip_longest(*texts)
+
+    # get sequence of all characters
+    all_characters = chain(*nth_characters)
+
+    # Filter out any Nones at the end
+    return "".join(x for x in all_characters if x is not None)
+
+
+def test_combine_strings():
+    assert (combine_strings(["lkjsdf"]) == "lkjsdf"), "one group = one group"
+    assert (combine_strings(["ljd", "ksf"]) == "lkjsdf"), "two groups"
+    assert (combine_strings(["ls", "kd", "jf"]) == "lkjsdf"), "three groups"
+    assert (combine_strings(["ls.", "kd", "jf"]) == "lkjsdf."), "not div by 3"
+
+# test_combine_strings()  # passing
+
+
+# selective brute force solution
 def break_cipher(ciphertext, key_length):
+    """
+    For each character of the key, sort letters by how well their resulting
+    letter frequencies match english. Then, try possible keys starting with the
+    best letters for each position. Rank the potential plaintexts by the number
+    of the most common english words they have in them.
+    """
+    groups = split_string(ciphertext, key_length)
+
+    # get possible keys and resulting plaintexts for each group
+    keys_plaintexts = map(find_keys_by_freq, groups)
+
+    best_score = -1
+    best_key = None
+    best_plaintext = None
+
+    for (k1, text1), (k2, text2), (k3, text3) in product(*keys_plaintexts):
+        key = k1 + k2 + k3
+        plaintext = combine_strings([text1, text2, text3])
+        key_score = score(plaintext)
+        if key_score > best_score:
+            # If debugging, print best so far
+            print("decrypt('", key, "'): ", plaintext, sep="")
+            print("with score ", key_score)
+            print()
+            best_score = key_score
+            best_key = key
+            best_plaintext = plaintext
+
+    return best_plaintext
+
+
+def test_break_cipher():
+    with open("cipher.txt") as f:
+        data = [chr(int(x)) for x in f.read().strip().split(",")]
+
+    key_length = 3
+    plaintext = break_cipher(data, key_length)
+    assert (plaintext == EXPECTED_PLAINTEXT)
+    assert sum(ord(char) for char in plaintext) == EXPECTED_ASCII_SUM
+
+# test_break_cipher()  # passing
+
+
+# BRUTE FORCE brute force solution
+def brute_force_cipher(ciphertext, key_length):
     """
     Test every possible key and return the ones with the highest english-
     language score.
@@ -165,20 +247,23 @@ def break_cipher(ciphertext, key_length):
     return best_plaintext
 
 
+def test_brute_force_cipher():
+    with open("cipher.txt") as f:
+        data = [chr(int(x)) for x in f.read().strip().split(",")]
+
+    key_length = 3
+    plaintext = brute_force_cipher(data, key_length)
+    assert (plaintext == EXPECTED_PLAINTEXT)
+    assert sum(ord(char) for char in plaintext) == EXPECTED_ASCII_SUM
+
+# test_brute_force_cipher()  # passing
+
+
 if __name__ == "__main__":
     with open("cipher.txt") as f:
         data = [chr(int(x)) for x in f.read().strip().split(",")]
 
     key_length = 3
+    plaintext = break_cipher(data, key_length)
 
-    # Split into KEY_LENGTH groups, all of the characters that had the same key
-    groups = [list() for _ in range(key_length)]
-    n = 0
-    for char in data:
-        groups[n].append(char)
-        n = (n + 1) % key_length
-
-    # Now for each group we can use char distributions to find likely keys
-    plaintext = break_cipher(data, 3)
-    assert (plaintext == EXPECTED_PLAINTEXT)
     print(sum(ord(char) for char in plaintext))
