@@ -1,3 +1,19 @@
+"""
+Project Euler Problem 59: XOR Decryption
+
+Given a message encrypted by XORing ascii values with a repeating key, and
+given that the key is 3 lowercase letters, calculate the sum of the ascii
+values in the original message.
+
+Method 1 (brute_force_cipher): Test every single possible key made of three
+lowercase letters.
+
+Method 2 (break_cipher): Rank all possible letters at each position in the key
+by how much the resulting frequencies of the letters they apply to match
+letter frequencies in english. Test every possible three-letter key, in order
+using these rankings, so that the right key will probably come up quickly.
+"""
+
 import re
 from string import ascii_lowercase as lowercase
 from itertools import product, cycle, chain, zip_longest
@@ -33,6 +49,8 @@ LETTER_FREQUENCIES = {
     "x": 0.0015,
     "y": 0.01974,
     "z": 0.00074}
+
+COMMON_WORDS = ["the", "be", "to", "of", "and", "a", "in", "that", "have"]
 
 EXPECTED_PLAINTEXT = (
     "(The Gospel of John, chapter 1) 1 In the beginning the Word already "
@@ -81,8 +99,7 @@ def score(plaintext):
     english".
     """
     plaintext_words = WORDS_RE.findall(plaintext.lower())
-    common_words = ["the", "be", "to", "of", "and", "a", "in", "that", "have"]
-    return sum(plaintext_words.count(word) for word in common_words)
+    return sum(plaintext_words.count(word) for word in COMMON_WORDS)
 
 
 assert (score("lkjsdflkjdsf") == 0), "random characters don't have words"
