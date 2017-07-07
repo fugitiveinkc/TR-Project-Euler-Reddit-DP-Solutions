@@ -1,0 +1,4 @@
+Write a program that finds the maximum product of three numbers in a given
+array of integers.
+
+https://programmingpraxis.com/2017/06/30/maximum-product-of-three-revisited/
