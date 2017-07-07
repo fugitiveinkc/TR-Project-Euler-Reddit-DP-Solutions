@@ -76,7 +76,83 @@ def nested_for_product_of_three(seq):
 
 def test_nested_for():
     for problem_input, solution in example_solutions:
-        assert_equal(combinations_product_of_three(problem_input), solution)
+        assert_equal(nested_for_product_of_three(problem_input), solution)
+
+
+"""
+If all of the numbers are positive, we know the highest product of three
+numbers from the list will be the product of its highest three numbers. If
+there are at least two negative numbers we know that the highest product could
+potentially be the product of the largest number with the two negative numbers
+with the highest magnitude.
+
+If we sort the list first, we can grab those numbers right off the top and
+bottom and return the largest one. Since this requires sorting the list it is
+O(n log n).
+"""
+
+def sorting_product_of_three(seq):
+    """
+    Compute the maximum product of three numbers from the list, by sorting the list
+    and seeing which number is bigger, the product of the three largest positive
+    numbers, or the product of the largest positive number and the two largest
+    magnitude negative numbers.
+    """
+    seq = sorted(seq)
+    return max([seq[0] * seq[1] * seq[-1], seq[-3] * seq[-2] * seq[-1]])
+
+
+def test_sorting_product_of_three():
+    for problem_input, solution in example_solutions:
+        assert_equal(sorting_product_of_three(problem_input), solution)
+
+
+"""
+But, we don't care about the order of the middle part of the list, or even the
+order of the smallest two, or the second- and third-largest numberes. We can
+find these numbers by looping through the list once, which is linear!!!
+"""
+
+def sort(a, b):
+    """Return two numbers, sorted."""
+    if a <= b:
+        return (a, b)
+    else:
+        return (b, a)
+
+
+def product_of_three(seq):
+    """
+    Compute the maximum product of three numbers from the list, by looping
+    through the list once to find the smallest two and largest 3 numbers, and
+    seeing which number is bigger, the product of the three largest positive
+    numbers, or the product of the largest positive number and the two largest-
+    magnitude negative numbers.
+    """
+    largest = float("-inf")
+    second_largest = float("-inf")
+    third_largest = float("-inf")
+    smallest = float("inf")
+    second_smallest = float("inf")
+    for item in seq:
+        tmp = item
+        item, largest = sort(item, largest)
+        item, second_largest = sort(item, second_largest)
+        item, third_largest = sort(item, third_largest)
+
+        item = tmp
+        smallest, item = sort(smallest, item)
+        second_smallest, item = sort(second_smallest, item)
+
+    return max(
+        largest * second_largest * third_largest,
+        smallest * second_smallest * largest)
+        
+
+def test_product_of_three():
+    for problem_input, solution in example_solutions:
+        assert_equal(product_of_three(problem_input), solution)    
+
 
 
 if __name__ == "__main__":
